@@ -83,15 +83,13 @@ class DocumentSplitNode(BaseNode):
                 # 遇到标题，把标题前面临时存储内容合并
                 content = "\n".join(temp)
                 if new_title or content:
-                    parent_title = ""
-                    # 找到当前标题 在列表里面上一个索引值的标题
-                    for lv in range(current_level - 1, 0, -1):
-                        if level_title_list[lv]:
-                            parent_title = level_title_list[lv]
-                            break
-                    # 如果父标题，添加默认值
+                    if current_level > 1:
+                        parent_title = level_title_list[current_level - 1] or file_title
+                    else:
+                        parent_title = file_title
+                    # 兜底：如果 parent_title 仍为空（极少情况），使用 file_title
                     if not parent_title:
-                        parent_title = new_title if new_title else file_title
+                        parent_title = file_title
 
                     res.append({
                         "title": new_title,
@@ -122,13 +120,12 @@ class DocumentSplitNode(BaseNode):
         # 因为最后操作之后，没有标题了，把最后一段内容单独处理
         last_content = "\n".join(temp)
         if new_title or last_content:
-            parent_title = ""
-            for lv in range(current_level - 1, 0, -1):
-                if level_title_list[lv]:
-                    parent_title = level_title_list[lv]
-                    break
+            if current_level > 1:
+                parent_title = level_title_list[current_level - 1] or file_title
+            else:
+                parent_title = file_title
             if not parent_title:
-                parent_title = new_title if new_title else file_title
+                parent_title = file_title
 
             res.append({
                 "title": new_title,
@@ -226,7 +223,7 @@ class DocumentSplitNode(BaseNode):
         final_parts.append(current_part)
 
         # 专门处理每段内容part字段（根据业务也可以不处理）
-        part_counter = []
+        part_counter = {}
         result = []
         for parts in final_parts:
             if "part" in parts:

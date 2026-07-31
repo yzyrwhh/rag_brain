@@ -69,10 +69,10 @@ class ItemNameRecognitionNode(BaseNode):
             total += len(spices)
             result.append(spices)
 
-            if total > config.item_name_chunk_k:
+            if index > config.item_name_chunk_size:
                 break
 
-        return "\n\n".join(result)[:config.item_name_chunk_k]
+        return "\n\n".join(result)[:config.item_name_chunk_size]
 
     def _recognition_item_name_by_llm(self, file_title: str, item_name_context: str) -> str:
         self.log_step("step3", "LLM识别商品名")
@@ -216,8 +216,9 @@ if __name__ == '__main__':
     with open(chunk_json_path, "r", encoding="utf-8") as f:
         chunk_content = json.load(f)
     # 2. 构建state
+    file_title = chunk_content[0].get('file_title', '默认名称——————')
     state = {
-        "file_title": "万用表的使用",
+        "file_title": file_title,
         "chunks": chunk_content
     }
 
@@ -232,7 +233,7 @@ if __name__ == '__main__':
 
     """
       state = {
-        "file_title": "万用表的使用",
+        "file_title": file_title,
         "chunks": chunk_content
     }
 
