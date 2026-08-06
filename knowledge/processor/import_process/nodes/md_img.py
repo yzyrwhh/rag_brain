@@ -68,8 +68,9 @@ class MdImgNode(BaseNode):
         new_md_file_path = self._backup_new_md_file(state["md_path"], new_md_content)
         state["md_path"] = new_md_file_path
 
+        return state
 
-        pass
+
     def _get_md_content_and_path(self, state: ImportGraphState) -> Tuple[str,Path, Path]:
         self.log_step("step_1","读取文件内容")
 

@@ -28,6 +28,9 @@ class EntryNode(BaseNode):
         else:
             self.logger.warning("当前文件类型是其他类型")
             raise ValidationError("文件类型不匹配")
+
+        file_title = path_obj.stem
+        state['file_title'] = file_title
         return state
 
 if __name__ == '__main__':
