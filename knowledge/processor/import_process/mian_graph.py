@@ -3,6 +3,7 @@ from typing import final
 from langgraph.constants import END
 from langgraph.graph import StateGraph
 
+from knowledge.front.service.task_service import TaskService
 from knowledge.processor.import_process.base import setup_logging
 from knowledge.processor.import_process.nodes.bge_embedding_node import BgeEmbeddingNode
 from knowledge.processor.import_process.nodes.md_img import MdImgNode
@@ -75,9 +76,13 @@ def run_graph_import(task_id,impotd_file_path,file_dir):
 
     final_state = None
     graph = create_graph()
+    ts = TaskService()
+
     for event in graph.stream(state):
         for node_name,state_data in event.items():
             print(f"运行节点：{node_name} ， 传输数据：{state_data}")
+            ts.mark_node_done(task_id,node_name)
+
             final_state = state_data
     return final_state
 
