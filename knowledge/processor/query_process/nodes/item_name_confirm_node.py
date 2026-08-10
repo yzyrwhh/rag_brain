@@ -4,10 +4,9 @@ from typing import List, Dict, Any
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from knowledge.processor.import_process import config
-from knowledge.processor.import_process.base import BaseNode
-from knowledge.processor.import_process.config import get_config
-from knowledge.processor.query_process.base import setup_logging
+
+from knowledge.processor.query_process.base import setup_logging, BaseNode
+from knowledge.processor.query_process.config import get_config
 from knowledge.processor.query_process.state import QueryGraphState
 from knowledge.prompt.querry.querry_prompt import ITEM_NAME_EXTRACT_TEMPLATE
 from knowledge.tools.embedding_tool import generate_hybrid_embeddings
@@ -142,7 +141,7 @@ class ItemNameConfirmNode(BaseNode):
             self.logger.error("无法连接到 Milvus")
             return []
         config = get_config()
-        collection_name = config.chunks_collection  #############################与processz中一致###########
+        collection_name = config.item_name_collection  #############################与processz中一致###########
 
         embeddings = generate_hybrid_embeddings(item_names)
 
