@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Tuple
 
-from knowledge.processor.query_process.base import BaseNode
+from knowledge.processor.query_process.base import BaseNode, setup_logging
 from knowledge.processor.query_process.config import get_config
 from knowledge.processor.query_process.state import QueryGraphState
 
@@ -93,6 +93,48 @@ _node_instance = RrfNode()
 def node_rrf(state: QueryGraphState) -> QueryGraphState:
     """兼容原有调用方式的入口函数。"""
     return _node_instance(state)
+
+
+if __name__ == "__main__":
+    import json
+    setup_logging()
+
+    print("=" * 60)
+    print("开始测试: RRF 融合节点 (RrfNode)")
+    print("=" * 60)
+
+    # 模拟三路检索结果
+    # chunk_1 命中 3 路（最高分）
+    # chunk_2 命中 2 路
+    # chunk_3, chunk_4, chunk_5 各命中 1 路
+    mock_state = {
+        "embedding_chunks": [
+            {"entity": {"chunk_id": "chunk_1", "content": "向量搜索结果#1"}},
+            {"entity": {"chunk_id": "chunk_2", "content": "向量搜索结果#2"}},
+            {"entity": {"chunk_id": "chunk_3", "content": "向量搜索结果#3"}},
+        ],
+        "hyde_embedding_chunks": [
+            {"entity": {"chunk_id": "chunk_2", "content": "HyDE搜索结果#1"}},
+            {"entity": {"chunk_id": "chunk_1", "content": "HyDE搜索结果#2"}},
+            {"entity": {"chunk_id": "chunk_4", "content": "HyDE搜索结果#3"}},
+        ],
+    }
+
+    print("【输入状态】:")
+    print(f"  embedding_chunks: {len(mock_state['embedding_chunks'])} 条")
+    print(f"  hyde_embedding_chunks: {len(mock_state['hyde_embedding_chunks'])} 条")
+    print("-" * 60)
+
+    # 执行 RRF 融合
+    result = node_rrf(mock_state)
+
+    # 打印结果
+    print("\n【融合结果】:")
+    for i, chunk in enumerate(result["rrf_chunks"], 1):
+        print(f"[{i}] {chunk.get('chunk_id')} - {chunk.get('content')}")
+
+    print("-" * 60)
+    print("测试完成")
 
 
 
