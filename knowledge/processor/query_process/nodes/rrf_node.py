@@ -9,10 +9,6 @@ class RrfNode(BaseNode):
 
     name = "rrf"
 
-    # ================================================================== #
-    #                           主流程                                     #
-    # ================================================================== #
-
     def process(self, state: QueryGraphState) -> QueryGraphState:
         config = get_config()
 
@@ -39,6 +35,16 @@ class RrfNode(BaseNode):
             k=config.rrf_k,
             max_results=config.rrf_max_results,
         )
+
+        # Step 6: 输出结果
+        rrf_chunks = [doc for doc, _ in rrf_results]
+        self.logger.info(f"RRF 融合完成，返回 {len(rrf_chunks)} 条结果")
+
+        if rrf_results:
+            scores = [s for _, s in rrf_results]
+            self.logger.info(f"分数范围: [{min(scores):.6f}, {max(scores):.6f}]")
+
+        return {"rrf_chunks": rrf_chunks}
 
 
 
