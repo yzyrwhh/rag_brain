@@ -5,7 +5,6 @@ from typing import List, Dict
 from bson import ObjectId
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from transformers.utils.hub import SESSION_ID
 
 load_dotenv()
 
@@ -49,7 +48,7 @@ def save_chat_message(session_id: str,
 
     data = {
         "session_id": session_id,
-       " role": role,
+        "role": role,
         "text": text,
         "rewritten_query": rewritten_query,
         "item_names": item_names,
@@ -72,7 +71,7 @@ def save_chat_message(session_id: str,
 
 def clear_chat_message(session_id: str):
     mongo_client = get_mongo_client()
-    result = mongo_client.collection.delete_any({"session_id": session_id})
+    result = mongo_client.collection.delete_many({"session_id": session_id})
     return str(result.deleted_count)
 
 
