@@ -22,6 +22,10 @@ def get_mongo_client() -> MongoUtil:
 
 
 def get_recent_message(session_id: str, limit: int = 10) -> List[Dict]:
+    """
+
+    :rtype: object
+    """
     # 获取MongoUtil对象
     mongo_client = get_mongo_client()
     # 构建查询条件

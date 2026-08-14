@@ -2,9 +2,10 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TypeVar, Optional
 
+from knowledge.front.utils.task_utils import add_running_task, add_done_task
 from knowledge.processor.query_process.config import QueryConfig, get_config
 from knowledge.processor.query_process.exceptions import QueryProcessError
-from knowledge.tools.task_utils______goto import add_running_task, add_done_task
+
 
 T = TypeVar("T")
 

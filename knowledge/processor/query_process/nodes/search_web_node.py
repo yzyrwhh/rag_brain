@@ -9,7 +9,7 @@ from knowledge.processor.query_process.config import get_config
 from knowledge.processor.query_process.state import QueryGraphState
 
 class WebSearchNode(BaseNode):
-
+    name = "WebSearch"
 
     async def process(self, state:QueryGraphState)->QueryGraphState:
         # 1 参数校验
