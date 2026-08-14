@@ -7,6 +7,7 @@ class QueryGraphState(TypedDict):
 
        Attributes:
            session_id: 会话 ID，用于追踪多轮对话。
+           task_id: 任务 ID，标识单次查询任务（SSE 流的 key）。
            message_id: 消息 ID，标识单次查询。
            original_query: 原始用户查询。
            embedding_chunks: 向量检索结果列表。
@@ -25,6 +26,7 @@ class QueryGraphState(TypedDict):
        """
 
     session_id: str
+    task_id: str
     message_id: str
     original_query: str
     embedding_chunks: list
@@ -43,6 +45,7 @@ class QueryGraphState(TypedDict):
 
 DEFAULT_STATE: QueryGraphState = {
         "session_id": "",  # 会话 ID
+        "task_id": "",  # 任务 ID
         "message_id": "",  # 消息 ID
         "original_query": "",  # 原始查询
         "embedding_chunks": [],  # 向量检索结果

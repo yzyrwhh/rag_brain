@@ -59,18 +59,19 @@ def _register_routes(app: FastAPI):
     async def query(request: QueryRequest, background_tasks: BackgroundTasks):
         user_query = request.query
         session_id = request.session_id or str(uuid.uuid4())
+        task_id = str(uuid.uuid4())
         is_stream = request.is_stream
 
-        update_task_status(session_id, TASK_STATUS_PROCESSING, is_stream)
+        update_task_status(task_id, TASK_STATUS_PROCESSING)
 
         if is_stream:
-            background_tasks.add_task(_run_query_graph, session_id, user_query, is_stream)
+            background_tasks.add_task(_run_query_graph, session_id, task_id, user_query, is_stream)
             await asyncio.sleep(0.1)
-            return {"message": "Query submitted", "session_id": session_id}
+            return {"message": "Query submitted", "session_id": session_id, "task_id": task_id}
         else:
-            _run_query_graph(session_id, user_query, is_stream)
-            answer = get_task_result(session_id, "answer", "")
-            return {"session_id": session_id, "answer": answer}
+            _run_query_graph(session_id, task_id, user_query, is_stream)
+            answer = get_task_result(task_id, "answer", "")
+            return {"session_id": session_id, "task_id": task_id, "answer": answer}
 
 
     @app.get("/stream/{task_id}",response_model=None)
@@ -98,19 +99,20 @@ def _register_routes(app: FastAPI):
         return {"deleted_count": count}
 
 
-def _run_query_graph(session_id: str, user_query: str, is_stream: bool):
+def _run_query_graph(session_id: str, task_id: str, user_query: str, is_stream: bool):
     """后台任务：执行查询流程图"""
     if is_stream:
-        create_sse_queue(session_id)
+        create_sse_queue(task_id)
 
     default_state = {
         "original_query": user_query,
         "session_id": session_id,
+        "task_id": task_id,
         "is_stream": is_stream
     }
 
     query_app.invoke(default_state)
-    update_task_status(session_id, TASK_STATUS_COMPLETED, is_stream)
+    update_task_status(task_id, TASK_STATUS_COMPLETED)
 
 app = create_app()
 

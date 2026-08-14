@@ -15,7 +15,7 @@ class AnswerOutputNode(BaseNode):
     name = "answer_output"
 
     def process(self, state: QueryGraphState) -> QueryGraphState:
-        session_id = state.get("session_id")
+        task_id = state.get("task_id")
         is_stream = state.get("is_stream")
 
         # Step 1: 已有答案（如商品确认提示）→ 直接推送
@@ -33,7 +33,7 @@ class AnswerOutputNode(BaseNode):
             # Step 9: 流式模式发送结束事件
             if is_stream:
                 push_to_session(
-                    session_id,
+                    task_id,
                     SSEEvent.FINAL,
                     {"answer": state.get("answer", ""), "status": "completed"}
                 )
@@ -44,9 +44,9 @@ class AnswerOutputNode(BaseNode):
         """将已有答案推送到流或任务结果。"""
         answer = state["answer"]
         if state.get("is_stream"):
-            push_to_session(state["session_id"],SSEEvent.DELTA, {"delta": answer})
+            push_to_session(state["task_id"],SSEEvent.DELTA, {"delta": answer})
         else:
-            set_task_result(state["session_id"], "answer", answer)
+            set_task_result(state["task_id"], "answer", answer)
 
 
     def _build_prompt(self, state: QueryGraphState) -> str:
@@ -135,14 +135,14 @@ class AnswerOutputNode(BaseNode):
         """调用 LLM 生成答案（流式/非流式）。"""
         self.log_step("generate", "生成答案")
         llm = get_llm_client()
-        session_id = state.get("session_id")
+        task_id = state.get("task_id")
 
         if state.get("is_stream"):
-            state["answer"] = self._stream_generate(llm, prompt, session_id)
+            state["answer"] = self._stream_generate(llm, prompt, task_id)
         else:
-            state["answer"] = self._invoke_generate(llm, prompt, session_id)
+            state["answer"] = self._invoke_generate(llm, prompt, task_id)
 
-    def _stream_generate(self, llm, prompt: str, session_id: str) -> str:
+    def _stream_generate(self, llm, prompt: str, task_id: str) -> str:
         """流式生成，逐 chunk 推送。"""
         result = ""
         try:
@@ -150,18 +150,18 @@ class AnswerOutputNode(BaseNode):
                 delta = getattr(chunk, "content", "") or ""
                 if delta:
                     result += delta
-                    push_to_session(session_id, "delta", {"delta": delta})
+                    push_to_session(task_id, "delta", {"delta": delta})
         except Exception as e:
             self.logger.error(f"流式生成出错: {e}")
         return result\
 
 
-    def _invoke_generate(self, llm, prompt: str, session_id: str) -> str:
+    def _invoke_generate(self, llm, prompt: str, task_id: str) -> str:
         """非流式生成。"""
         try:
             response = llm.invoke(prompt)
             answer = response.content
-            set_task_result(session_id, "answer", answer)
+            set_task_result(task_id, "answer", answer)
             return answer
         except Exception as e:
             self.logger.error(f"生成回答出错: {e}")

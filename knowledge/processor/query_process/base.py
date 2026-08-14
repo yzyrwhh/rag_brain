@@ -35,12 +35,11 @@ class BaseNode(ABC):
         self.logger.info(f"--- {self.name} 开始 ---")
 
         # 注册任务追踪
-        session_id = state.get("session_id", "") if isinstance(state, dict) else ""
-        is_stream = state.get("is_stream", False) if isinstance(state, dict) else False
+        task_id = state.get("task_id", "") if isinstance(state, dict) else ""
 
-        if session_id:
+        if task_id:
             try:
-                add_running_task(session_id, self.name, is_stream)
+                add_running_task(task_id, self.name)
             except Exception as e:
                 self.logger.warning(f"任务追踪注册失败: {e}")
 
@@ -49,9 +48,9 @@ class BaseNode(ABC):
             self.logger.info(f"--- {self.name} 完成 ---")
 
             # 标记任务完成
-            if session_id:
+            if task_id:
                 try:
-                    add_done_task(session_id, self.name, is_stream)
+                    add_done_task(task_id, self.name)
                 except Exception as e:
                     self.logger.warning(f"任务完成标记失败: {e}")
 
