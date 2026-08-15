@@ -11,12 +11,12 @@ from knowledge.processor.query_process.state import QueryGraphState
 class WebSearchNode(BaseNode):
     name = "WebSearch"
 
-    async def process(self, state:QueryGraphState)->QueryGraphState:
+    def process(self, state:QueryGraphState)->QueryGraphState:
         # 1 参数校验
         rewritten_query = self.validate_param(state)
 
         # 2 调用mcp工具得到工具返回结果
-        mcp_result = await self.execute_web_search_mcp(rewritten_query)
+        mcp_result = asyncio.run(self.execute_web_search_mcp(rewritten_query))
         if not mcp_result:
             return state
 
