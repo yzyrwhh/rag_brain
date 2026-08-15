@@ -1,7 +1,7 @@
 from langgraph.constants import END
 from langgraph.graph import StateGraph
 
-from knowledge.service.task_service import TaskService
+from knowledge.front.service.task_service import TaskService
 from knowledge.processor.import_process.base import setup_logging
 from knowledge.processor.import_process.nodes.bge_embedding_node import BgeEmbeddingNode
 from knowledge.processor.import_process.nodes.md_img import MdImgNode
