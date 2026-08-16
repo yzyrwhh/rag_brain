@@ -68,19 +68,24 @@ def init_milvus() -> None:
     uri = s.milvus_url if s.milvus_url.startswith("http") else f"http://{s.milvus_url}"
     client = MilvusClient(uri=uri)
 
-    def ensure(name: str, fields: list[dict], desc: str) -> None:
+    def ensure(name: str, fields: list[dict], desc: str, with_sparse: bool = False) -> None:
         if client.has_collection(name):
-            print(f"[milvus] exists: {name}")
+            print(f"[milvus] exists: {name}（维度/字段不符需先 drop 再重跑）")
             return
         schema = client.create_schema(auto_id=True, enable_dynamic_field=False)
         for f in fields:
             schema.add_field(**f)
         index_params = client.prepare_index_params()
         index_params.add_index(field_name="dense_vector", index_type="AUTOINDEX", metric_type="IP")
+        if with_sparse:
+            index_params.add_index(
+                field_name="sparse_vector", index_type="SPARSE_INVERTED_INDEX", metric_type="IP"
+            )
         client.create_collection(collection_name=name, schema=schema, index_params=index_params)
         client.load_collection(name)
         print(f"[milvus] created: {name} ({desc})")
 
+    dim = s.embedding_dim
     chunks_fields = [
         {"field_name": "pk", "datatype": DataType.INT64, "is_primary": True, "auto_id": True},
         {"field_name": "chunk_id", "datatype": DataType.VARCHAR, "max_length": 64},
@@ -91,9 +96,11 @@ def init_milvus() -> None:
         {"field_name": "visibility", "datatype": DataType.INT8},
         {"field_name": "chunk_index", "datatype": DataType.INT64},
         {"field_name": "text", "datatype": DataType.VARCHAR, "max_length": 65535},
-        {"field_name": "dense_vector", "datatype": DataType.FLOAT_VECTOR, "dim": 1536},
+        {"field_name": "dense_vector", "datatype": DataType.FLOAT_VECTOR, "dim": dim},
+        # 检索增强：BGE-M3 sparse（lexical_weights，key=token_id int），hybrid 检索用
+        {"field_name": "sparse_vector", "datatype": DataType.SPARSE_FLOAT_VECTOR},
     ]
-    ensure(s.milvus_chunks_collection, chunks_fields, "统一知识切片 kb_chunks_v3，对齐 03 §4.1")
+    ensure(s.milvus_chunks_collection, chunks_fields, "统一知识切片 kb_chunks_v3（dense+sparse），对齐 03 §4.1", with_sparse=True)
 
     memory_fields = [
         {"field_name": "pk", "datatype": DataType.INT64, "is_primary": True, "auto_id": True},
@@ -103,14 +110,14 @@ def init_milvus() -> None:
         {"field_name": "type", "datatype": DataType.VARCHAR, "max_length": 32},
         {"field_name": "scene_name", "datatype": DataType.VARCHAR, "max_length": 128},
         {"field_name": "content", "datatype": DataType.VARCHAR, "max_length": 2000},
-        {"field_name": "dense_vector", "datatype": DataType.FLOAT_VECTOR, "dim": 1536},
+        {"field_name": "dense_vector", "datatype": DataType.FLOAT_VECTOR, "dim": dim},
         {"field_name": "importance", "datatype": DataType.INT8},
         {"field_name": "trust", "datatype": DataType.FLOAT},
         {"field_name": "status", "datatype": DataType.INT8},
     ]
     ensure(s.milvus_memory_collection, memory_fields, "记忆向量 memory_vectors，对齐 03 §4.2")
 
-    print(f"[milvus] ensured {s.milvus_chunks_collection} / {s.milvus_memory_collection}")
+    print(f"[milvus] ensured {s.milvus_chunks_collection} / {s.milvus_memory_collection} (dim={dim})")
 
 
 # ---------------- Neo4j ----------------

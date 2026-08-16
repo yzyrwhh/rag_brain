@@ -11,9 +11,12 @@ from app.infra.redis import get_async_redis
 from app.schemas.events import sse_pack
 from app.schemas.task import CancelOut, TaskCreate, TaskOut
 from app.services import task_service
-from app.workers.tasks import hello_agent_task
+from app.workers.tasks import hello_agent_task, kb_import_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+# 可通过 POST /tasks 直接提交的 agent 白名单（其余走各自业务端点）
+_AGENT_WHITELIST = ("hello", "kb_import")
 
 _SSE_SUBSCRIBE_TIMEOUT = 20.0
 
@@ -37,10 +40,28 @@ def _to_out(doc: dict) -> TaskOut:
 
 @router.post("", response_model=TaskOut, status_code=202)
 async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)) -> TaskOut:
-    if body.agent != "hello":
-        raise AppError(ErrorCode.VALIDATION_ERROR, "Phase 0 仅支持 agent=hello", status_code=422)
+    if body.agent not in _AGENT_WHITELIST:
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR,
+            f"不支持的 agent，可选: {', '.join(_AGENT_WHITELIST)}",
+            status_code=422,
+        )
+    if body.agent == "kb_import" and not body.input.get("doc_id"):
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR, "kb_import 需要 input.doc_id", status_code=422
+        )
     task_id = await task_service.create_task(user["_id"], body.agent, body.input, body.budget)
-    hello_agent_task.delay(task_id, user["_id"])  # Celery 异步执行
+    if body.agent == "hello":
+        hello_agent_task.delay(task_id, user["_id"])  # Celery 异步执行
+    else:  # kb_import（直接提交时需在 input 中携带 space_id/file_key/domain）
+        kb_import_task.delay(
+            task_id,
+            body.input["doc_id"],
+            user["_id"],
+            body.input.get("space_id", ""),
+            body.input.get("domain", "general"),
+            body.input.get("file_key", ""),
+        )
     return _to_out(await task_service.get_task(task_id, user["_id"]))
 
 
