@@ -1,0 +1,63 @@
+# 掌柜智库应用服务（覆盖根 docker-compose.yml 的 Milvus 全家桶，新增 redis/api/worker）
+# 用法: docker compose -f docker-compose.yml -f docker-compose.app.yml up -d <服务名>
+# 注意: Milvus 服务名是 root compose 的 "standalone"（不是 milvus）
+services:
+  # ==================== Redis（队列/事件/缓存；复用本地 redis:8-alpine） ====================
+  redis:
+    container_name: shopkeer-redis
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # ==================== Neo4j（知识图谱 FR-26；Route A：图谱验证后才启用，Phase 0 可不启） ====================
+  neo4j:
+    container_name: shopkeer-neo4j
+    image: neo4j:5.26-community
+    environment:
+      - NEO4J_AUTH=neo4j/change-me
+      - NEO4J_server_memory_heap_max__size=512M
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/neo4j:/data
+    restart: always
+
+  # ==================== API（FastAPI，无状态） ====================
+  api:
+    container_name: shopkeer-api
+    build: ./server
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - ./server/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - neo4j
+    restart: always
+
+  # ==================== Worker（Celery，执行 LangGraph 慢任务） ====================
+  worker:
+    container_name: shopkeer-worker
+    build: ./server
+    command: celery -A app.infra.celery_app worker -l info
+    env_file:
+      - ./server/.env
+    depends_on:
+      - redis
+      - neo4j
+    restart: always
+
+  # ==================== Flower（Celery 监控，可选） ====================
+  flower:
+    container_name: shopkeer-flower
+    image: mher/flower:2.0
+    command: ["celery", "-A", "app.infra.celery_app", "flower", "--port=5555"]
+    env_file:
+      - ./server/.env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - worker

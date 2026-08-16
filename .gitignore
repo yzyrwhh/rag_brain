@@ -1,0 +1,33 @@
+# ===== 运行时数据 / 敏感配置 =====
+volumes/
+.env
+.env.local
+.env.prod
+.env.test
+server/.env
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+
+# ===== IDE / 系统 =====
+.idea/
+.vscode/
+.DS_Store
+*.log
+
+# ===== 参考仓库（嵌套 git 仓库，可重新 clone，不入库） =====
+TencentDB-Agent-Memory/
+mem0/
+
+# ===== 其他 =====
+knowledge/.workbuddy/
+node_modules/
