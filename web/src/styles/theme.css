@@ -1,0 +1,67 @@
+:root {
+  /* 主题色（Element Plus 主色微调） */
+  --el-color-primary: #4f6ef7;
+  --el-color-primary-light-3: #6f89f9;
+  --el-color-primary-light-5: #8fa3fb;
+  --el-color-primary-light-7: #b6c4fc;
+  --el-color-primary-light-8: #cbd5fd;
+  --el-color-primary-light-9: #eef2fe;
+  --el-color-primary-dark-2: #3f58c5;
+
+  /* 布局 */
+  --sk-sidebar-w: 232px;
+  --sk-radius: 12px;
+  --sk-radius-sm: 8px;
+  --sk-shadow: 0 1px 3px rgba(31, 41, 55, .06), 0 1px 2px rgba(31, 41, 55, .04);
+  --sk-shadow-lg: 0 8px 24px rgba(31, 41, 55, .1);
+
+  /* 背景与文本 */
+  --sk-bg: #f6f7fb;
+  --sk-bg-card: #ffffff;
+  --sk-bg-sidebar: #ffffff;
+  --sk-border: #ececf1;
+  --sk-text: #1f2329;
+  --sk-text-2: #646a73;
+  --sk-text-3: #8f959e;
+
+  /* 消息 */
+  --sk-msg-user: #4f6ef7;
+  --sk-msg-user-text: #fff;
+  --sk-msg-bot: #ffffff;
+
+  /* 意图标签色 */
+  --sk-tag-knowledge: #4f6ef7;
+  --sk-tag-general: #10b981;
+  --sk-tag-unclear: #f59e0b;
+}
+
+html, body, #app { height: 100%; margin: 0; }
+body {
+  background: var(--sk-bg);
+  color: var(--sk-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 流式光标 */
+.stream-cursor::after {
+  content: "▍";
+  color: var(--el-color-primary);
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #d5d7de; border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 通用卡片 */
+.sk-card {
+  background: var(--sk-bg-card);
+  border-radius: var(--sk-radius);
+  border: 1px solid var(--sk-border);
+  box-shadow: var(--sk-shadow);
+}
