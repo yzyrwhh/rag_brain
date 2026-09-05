@@ -113,7 +113,7 @@ if __name__ == '__main__':
     # Step 1: 配置输出路径
     # ----------------------------------------------------------------
     # 改为你指定的输出目录（请确保该目录存在，或者程序会自动创建？这里不处理创建）
-    output_dir = r"D:\folder\course\SGG\掌柜智库项目\资料\2-文档\tem"
+    output_dir = r"examples/out"
     # 输出文件名沿用原逻辑
     output_path = os.path.join(output_dir, "chunks_item_name_vector.json")
 

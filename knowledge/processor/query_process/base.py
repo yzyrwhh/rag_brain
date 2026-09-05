@@ -2,7 +2,14 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TypeVar, Optional
 
-from knowledge.front.utils.task_utils import add_running_task, add_done_task
+from knowledge.front.utils.task_utils import (
+    add_running_task,
+    add_done_task,
+    get_done_task_list,
+    get_running_task_list,
+    get_task_status,
+)
+from knowledge.front.utils.sse_tool import push_to_session, SSEEvent
 from knowledge.processor.query_process.config import QueryConfig, get_config
 from knowledge.processor.query_process.exceptions import QueryProcessError
 
@@ -16,6 +23,21 @@ class BaseNode(ABC):
 
         self.config = config or get_config()
         self.logger = logging.getLogger(f"query.{self.name}")
+
+    def _push_progress(self, task_id: str) -> None:
+        """向 SSE 队列推送当前任务进度（若已创建队列）。"""
+        try:
+            push_to_session(
+                task_id,
+                SSEEvent.PROGRESS,
+                {
+                    "status": get_task_status(task_id),
+                    "done_list": get_done_task_list(task_id),
+                    "running_list": get_running_task_list(task_id),
+                },
+            )
+        except Exception:  # noqa: BLE001 - 进度推送失败不应影响节点执行
+            pass
 
     def __call__(self, state: T) -> T:
         """节点执行入口。
@@ -40,6 +62,7 @@ class BaseNode(ABC):
         if task_id:
             try:
                 add_running_task(task_id, self.name)
+                self._push_progress(task_id)
             except Exception as e:
                 self.logger.warning(f"任务追踪注册失败: {e}")
 
@@ -51,6 +74,7 @@ class BaseNode(ABC):
             if task_id:
                 try:
                     add_done_task(task_id, self.name)
+                    self._push_progress(task_id)
                 except Exception as e:
                     self.logger.warning(f"任务完成标记失败: {e}")
 

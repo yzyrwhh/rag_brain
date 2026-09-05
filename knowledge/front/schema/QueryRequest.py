@@ -8,12 +8,6 @@ class QueryRequest(BaseModel):
     session_id: Optional[str] = Field(None, description="会话ID")
     is_stream: bool = Field(False, description="是否流式返回")
 
-class QueryRequest(BaseModel):
-    """查询请求模型"""
-    query: str = Field(..., description="查询内容")
-    session_id: Optional[str] = Field(None, description="会话ID")
-    is_stream: bool = Field(False, description="是否流式返回")
-
 class TaskStatusResponse(BaseModel):
     """任务状态响应"""
     status: str = Field(..., description="任务状态")

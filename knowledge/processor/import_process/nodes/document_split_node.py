@@ -286,7 +286,7 @@ class DocumentSplitNode(BaseNode):
 
     def copy_chunks(self, chunks, state):
         file_dir = state.get('file_dir')
-        # "file_dir": r"D:\dev\test\a.json"
+        # "file_dir": r"examples/in"
         output_file_dir = os.path.join(file_dir, 'chunks.json')
         with open(output_file_dir, 'w', encoding='utf-8') as f:
             json.dump(chunks, f, ensure_ascii=False, indent=4)
@@ -296,14 +296,14 @@ if __name__ == '__main__':
     setup_logging()
     doc_split_node = DocumentSplitNode()
     # 构建md_content
-    file_path = r"D:\folder\course\SGG\掌柜智库项目\资料\2-文档\markdown文档\6W100-整本手册\auto\6W100-整本手册.md"
+    file_path = r"examples/6W100-整本手册.md"
     with open(file_path, "r", encoding="utf-8") as f:
         file_content = f.read()
     # 构建数据
     state = {
         "file_title": "6W100-整本手册",
         "md_content": file_content,
-        "file_dir": r"D:\folder\course\SGG\掌柜智库项目\资料\2-文档\markdown文档\6W100-整本手册\auto"
+        "file_dir": r"examples/in"
     }
 
     doc_split_node.process(state)

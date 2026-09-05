@@ -212,7 +212,7 @@ import json
 
 if __name__ == '__main__':
     # 1. 读取chunk.json
-    chunk_json_path = r"D:\folder\course\SGG\掌柜智库项目\资料\2-文档\markdown文档\6W100-整本手册\auto\chunks.json"
+    chunk_json_path = r"examples/out/chunks.json"
     with open(chunk_json_path, "r", encoding="utf-8") as f:
         chunk_content = json.load(f)
     # 2. 构建state

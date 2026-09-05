@@ -134,7 +134,7 @@ import_milvus_node = ImportMilvusNode()
 
 if __name__ == "__main__":
     setup_logging()
-    temp_dir = r"D:\folder\course\SGG\掌柜智库项目\资料\2-文档\tem"
+    temp_dir = r"examples/out"
 
     input_path = os.path.join(temp_dir, "chunks_item_name_vector.json")
     output_path = os.path.join(temp_dir, "chunks_item_name_vector_ids.json")

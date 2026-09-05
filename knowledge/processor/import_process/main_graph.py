@@ -59,16 +59,16 @@ def  create_graph():
 def import_router(state: ImportGraphState) -> ImportGraphState:
     if state.get("is_pdf_read_enabled"):
         return "pdf"
-    if state.get("is_md_read_enabled"):
+    if state.get("is_markdown_read_enabled"):
         return "md"
     return END
 
 #获取上一个方法编译graph对象，执行
 #invoke 或者 stream
-def run_graph_import(task_id,impotd_file_path,file_dir):
+def run_graph_import(task_id,import_file_path,file_dir):
     state = {
         "task_id":task_id,
-        "import_file_path":impotd_file_path,
+        "import_file_path":import_file_path,
         "file_dir":file_dir
     }
 
@@ -87,12 +87,12 @@ def run_graph_import(task_id,impotd_file_path,file_dir):
 
 if __name__ == '__main__':
     setup_logging()
-    import_file_path = r"D:\folder\course\SGG\掌柜智库项目\资料\2-文档\pdf文档\doc\6W100-整本手册.pdf"
-    file_dir = r"D:\folder\course\SGG\掌柜智库项目\资料\2-文档\test"
+    import_file_path = r"examples/6W100-整本手册.pdf"
+    file_dir = r"examples/out"
 
     final_res = run_graph_import(
         task_id=1,
-        impotd_file_path=import_file_path,
+        import_file_path=import_file_path,
         file_dir=file_dir
     )
 

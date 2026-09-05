@@ -1,3 +1,4 @@
+import json
 from typing import List, Dict
 
 from knowledge.front.utils.task_utils import set_task_result
@@ -30,15 +31,51 @@ class AnswerOutputNode(BaseNode):
         # Step 8: 写入历史
         if state.get("answer"):
             self._write_history(state)
+            # 收集引用来源（供前端展示）
+            sources = self._collect_sources(state)
             # Step 9: 流式模式发送结束事件
             if is_stream:
                 push_to_session(
                     task_id,
                     SSEEvent.FINAL,
-                    {"answer": state.get("answer", ""), "status": "completed"}
+                    {
+                        "answer": state.get("answer", ""),
+                        "status": "completed",
+                        "sources": sources,
+                    }
                 )
+            else:
+                set_task_result(task_id, "sources", json.dumps(sources, ensure_ascii=False))
 
         return state
+
+    def _collect_sources(self, state: QueryGraphState) -> List[Dict]:
+        """从重排文档 / 网页检索结果中收集引用来源。"""
+        sources: List[Dict] = []
+        seen: set = set()
+
+        docs = list(state.get("reranked_docs") or []) + list(state.get("web_search_docs") or [])
+        for doc in docs:
+            if not isinstance(doc, dict):
+                continue
+            url = str(doc.get("url") or "").strip()
+            chunk_id = str(doc.get("chunk_id") or "").strip()
+            key = url or chunk_id or (doc.get("title") or "")[:40]
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            item = {
+                "title": (doc.get("title") or doc.get("source") or "").strip(),
+                "source": (doc.get("source") or "").strip(),
+                "url": url,
+                "chunk_id": chunk_id,
+                "score": doc.get("score"),
+            }
+            sources.append(item)
+            if len(sources) >= 10:
+                break
+
+        return sources
 
     def _push_existing_answer(self, state: QueryGraphState):
         """将已有答案推送到流或任务结果。"""
@@ -153,7 +190,7 @@ class AnswerOutputNode(BaseNode):
                     push_to_session(task_id, "delta", {"delta": delta})
         except Exception as e:
             self.logger.error(f"流式生成出错: {e}")
-        return result\
+        return result
 
 
     def _invoke_generate(self, llm, prompt: str, task_id: str) -> str:

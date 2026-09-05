@@ -32,7 +32,7 @@ class ImportGraphState(TypedDict, total=False):
 
     # ==================== 控制标志 ====================
 
-    is_md_read_enabled: bool  # 是否启用 MD 读取
+    is_markdown_read_enabled: bool  # 是否启用 Markdown 读取
 
     is_pdf_read_enabled: bool  # 是否启用 PDF 读取
 
@@ -67,7 +67,7 @@ GRAPH_DEFAULT_STATE: ImportGraphState = {
 
     "is_pdf_read_enabled": False,
 
-    "is_md_read_enabled": False,
+    "is_markdown_read_enabled": False,
 
     "file_dir": "",
 

@@ -400,7 +400,7 @@ if __name__ == '__main__':
 
     # 2. 构建处理图片节点的状态
     img_state = {
-        "md_path": r"D:\folder\course\SGG\掌柜智库项目\资料\2-文档\markdown文档\6W100-整本手册\auto\6W100-整本手册.md"
+        "md_path": r"examples/6W100-整本手册.md"
     }
     # 3. 处理 md 图片节点
     processed_img_result = node_md_img.process(img_state)

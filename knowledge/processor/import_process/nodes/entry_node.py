@@ -6,7 +6,7 @@ from knowledge.processor.import_process.state import ImportGraphState
 
 
 class EntryNode(BaseNode):
-    name = "entry_name"
+    name = "entry_node"
 
     def process(self, state: ImportGraphState) -> ImportGraphState:
 
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     setup_logging()
 
     state = {
-        "import_file_path": r"D:\folder\course\SGG\掌柜智库项目\资料\2-pdf文档\pdf文档\doc\6W100-整本手册.pdf"
+        "import_file_path": r"examples/6W100-整本手册.pdf"
     }
 
     node = EntryNode()

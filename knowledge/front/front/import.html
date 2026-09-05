@@ -1,217 +1,28 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文件导入</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; padding: 40px; }
-        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h1 { font-size: 24px; color: #1a2332; margin-bottom: 8px; }
-        .subtitle { color: #6b7a8f; font-size: 14px; margin-bottom: 30px; }
-        .upload-area { border: 2px dashed #d0d7e2; border-radius: 12px; padding: 60px 20px; text-align: center; transition: all 0.3s; cursor: pointer; }
-        .upload-area:hover, .upload-area.dragover { border-color: #4f7cff; background: #f0f4ff; }
-        .upload-area .icon { font-size: 48px; color: #4f7cff; margin-bottom: 12px; }
-        .upload-area .text { color: #1a2332; font-size: 16px; font-weight: 500; }
-        .upload-area .hint { color: #8a9aa8; font-size: 14px; margin-top: 8px; }
-        #fileInput { display: none; }
-        .file-list { margin-top: 24px; }
-        .file-item { background: #f8f9fc; border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid #4f7cff; }
-        .file-item .header { display: flex; justify-content: space-between; align-items: center; }
-        .file-item .name { font-weight: 500; color: #1a2332; }
-        .file-item .size { font-size: 13px; color: #8a9aa8; }
-        .file-item .status { font-size: 13px; font-weight: 500; }
-        .file-item .status.processing { color: #f59e0b; }
-        .file-item .status.completed { color: #10b981; }
-        .file-item .status.failed { color: #ef4444; }
-        .progress-wrapper { margin-top: 12px; height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
-        .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #4f7cff, #7c5cfc); border-radius: 4px; transition: width 0.3s; }
-        .log-container { margin-top: 12px; max-height: 120px; overflow-y: auto; font-size: 13px; color: #4a5a6e; line-height: 1.8; background: #f8f9fc; border-radius: 8px; padding: 8px 14px; }
-        .log-container .log-line { opacity: 0.8; }
-        .log-container .log-line.running { opacity: 1; color: #f59e0b; }
-        .log-container .log-line.done { opacity: 0.6; }
-        .btn { display: inline-block; padding: 10px 24px; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: #4f7cff; color: white; }
-        .btn-primary:hover { background: #3b66e0; }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>📄 文档导入</h1>
-    <p class="subtitle">支持 PDF / Markdown 文件，自动解析并导入知识库</p>
-
-    <div class="upload-area" id="dropZone">
-        <div class="icon">📤</div>
-        <div class="text">点击或拖拽上传文件</div>
-        <div class="hint">支持 .pdf .md 格式，单个文件不超过 50MB</div>
-        <input type="file" id="fileInput" accept=".pdf,.md">
-    </div>
-
-    <div class="file-list" id="fileList"></div>
-</div>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能产品知识库 · 知识导入</title>
 <script>
-    const API_BASE = '';  // 根据你的实际路由调整
-
-    // ==================== 上传逻辑 ====================
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const fileList = document.getElementById('fileList');
-
-    dropZone.addEventListener('click', () => fileInput.click());
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) handleFile(e.target.files[0]);
-        e.target.value = '';
-    });
-
-    async function handleFile(file) {
-        const isPDF = file.name.toLowerCase().endsWith('.pdf');
-        const totalNodes = isPDF ? 9 : 8;
-
-        // 1. 创建 UI 条目
-        const itemEl = createFileItem(file);
-        fileList.prepend(itemEl);
-
-        // 2. 上传文件
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            const response = await fetch(`${API_BASE}/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || 'Upload failed');
-            }
-
-            const taskId = result.task_id;
-            updateStatus(itemEl, 'processing', '处理中...');
-
-            // 3. 开始轮询
-            pollStatus(taskId, itemEl, totalNodes);
-
-        } catch (err) {
-            updateStatus(itemEl, 'failed', `上传失败: ${err.message}`);
-        }
-    }
-
-    function createFileItem(file) {
-        const div = document.createElement('div');
-        div.className = 'file-item';
-        const size = (file.size / 1024).toFixed(1);
-        div.innerHTML = `
-            <div class="header">
-                <span class="name">${file.name}</span>
-                <span class="size">${size} KB</span>
-                <span class="status" id="status-${Date.now()}">等待上传...</span>
-            </div>
-            <div class="progress-wrapper"><div class="progress-bar" style="width:0%"></div></div>
-            <div class="log-container" id="log-${Date.now()}"><div class="log-line">⏳ 准备上传...</div></div>
-        `;
-        return div;
-    }
-
-    function updateStatus(itemEl, type, text) {
-        const statusEl = itemEl.querySelector('.status');
-        statusEl.textContent = text;
-        statusEl.className = 'status ' + type;
-    }
-
-    function getLogContainer(itemEl) {
-        return itemEl.querySelector('.log-container');
-    }
-
-    function getProgressBar(itemEl) {
-        return itemEl.querySelector('.progress-bar');
-    }
-
-    // ==================== 轮询逻辑 ====================
-    function pollStatus(taskId, itemEl, totalNodes) {
-        const logContainer = getLogContainer(itemEl);
-        const progressBar = getProgressBar(itemEl);
-        let interval = setInterval(async () => {
-            try {
-                const res = await fetch(`${API_BASE}/status/${taskId}`);
-                const data = await res.json();
-
-                // 1. 渲染日志 + 计算进度
-                const percentage = renderLogsAndCalculateProgress(
-                    logContainer, data.done_list, data.running_list, totalNodes
-                );
-
-                // 2. 更新进度条
-                progressBar.style.width = Math.min(percentage, 100) + '%';
-
-                // 3. 根据状态决定后续
-                if (data.status === 'completed') {
-                    progressBar.style.width = '100%';
-                    updateStatus(itemEl, 'completed', '✅ 完成');
-                    clearInterval(interval);
-                    addLog(logContainer, '✅ 所有处理完成！', 'done');
-                } else if (data.status === 'failed') {
-                    updateStatus(itemEl, 'failed', '❌ 失败');
-                    clearInterval(interval);
-                    addLog(logContainer, `❌ 处理失败: ${data.error || '未知错误'}`, 'done');
-                } else if (data.status === 'processing') {
-                    updateStatus(itemEl, 'processing', `处理中 ${Math.round(percentage)}%`);
-                }
-            } catch (err) {
-                // 网络错误时不要停止轮询，继续尝试
-                console.warn('Polling error:', err);
-            }
-        }, 1500);
-    }
-
-    // ==================== 日志与进度计算 ====================
-    function renderLogsAndCalculateProgress(logContainer, doneList, runningList, totalNodes) {
-        const done = Array.isArray(doneList) ? doneList : [];
-        const running = Array.isArray(runningList) ? runningList : [];
-
-        // 清空并重新渲染日志
-        logContainer.innerHTML = '';
-
-        // 渲染已完成节点
-        done.forEach((nodeName) => {
-            addLog(logContainer, `✅ ${nodeName}`, 'done');
-        });
-
-        // 渲染正在运行节点
-        running.forEach((nodeName) => {
-            addLog(logContainer, `⏳ ${nodeName} ...`, 'running');
-        });
-
-        // 计算进度
-        let percentage = (done.length / totalNodes) * 100;
-        if (running.length > 0) {
-            percentage += (0.5 / totalNodes) * 100;
-        }
-        // 未完成前最高显示 95%
-        if (percentage >= 100) {
-            percentage = 95;
-        }
-
-        return percentage;
-    }
-
-    function addLog(container, text, className = '') {
-        const div = document.createElement('div');
-        div.className = 'log-line' + (className ? ' ' + className : '');
-        div.textContent = text;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-    }
+// 上传功能已合并到会话页：导入页保留 URL 兼容，自动跳转并打开上传弹窗
+(function(){
+  var target = 'chat.html';
+  try{
+    var base = (location.protocol === 'file:') ? 'http://127.0.0.1:8001/' : location.href.split('/').slice(0,-1).join('/') + '/';
+    // 同源托管下相对路径即可，file:// 下回退到本地服务
+    if(location.protocol === 'file:') target = base + 'chat.html';
+  }catch(e){}
+  var u = new URL(target, location.href);
+  u.hash = '#upload';
+  location.replace(u.href);
+})();
 </script>
+</head>
+<body style="margin:0;background:#0b1120;color:#94a3b8;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;">
+  <div style="text-align:center">
+    <div style="font-size:40px;margin-bottom:12px">📥</div>
+    <div>正在跳转到「智能问答」页面的上传功能…</div>
+  </div>
 </body>
 </html>

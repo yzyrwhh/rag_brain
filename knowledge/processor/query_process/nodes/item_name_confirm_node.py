@@ -150,10 +150,14 @@ class ItemNameConfirmNode(BaseNode):
         for i, name in enumerate(item_names):
             try:
                 # 4.1 构建混合检索请求
+                # 注意：item_name 集合的稠密索引为 COSINE（见 item_name_recognition.py），
+                # 必须与集合索引 metric 一致，否则 Milvus 报 metric type not match。
                 reqs = build_hybrid_search_requests(
                     dense_vector=embeddings["dense"][i],
                     sparse_vector=embeddings["sparse"][i],
                     top_k=self.MAX_OPTIONS,
+                    dense_search_params={"metric_type": "COSINE", "params": {"nprobe": 10}},
+                    sparse_search_params={"metric_type": "IP"},
                 )
 
                 # 4.2 执行混合检索
@@ -191,6 +195,7 @@ class ItemNameConfirmNode(BaseNode):
         """
         confirmed: List[str] = []
         options: List[str] = []
+        seen_confirmed = set()
 
         for res in query_results:
             extracted = (res.get("extracted_name") or "").strip()
@@ -215,10 +220,16 @@ class ItemNameConfirmNode(BaseNode):
                     (m for m in high if m["item_name"].strip() == extracted),
                     None
                 )
-                confirmed.append((exact or high[0])["item_name"])
+                name = (exact or high[0])["item_name"].strip()
+                if name and name not in seen_confirmed:
+                    seen_confirmed.add(name)
+                    confirmed.append(name)
             elif mid:
-                # 中置信: 作为候选选项
-                options.extend(m["item_name"] for m in mid[:self.MAX_OPTIONS])
+                # 中置信: 作为候选选项（去重）
+                for m in mid[:self.MAX_OPTIONS]:
+                    n = m["item_name"].strip()
+                    if n and n not in options:
+                        options.append(n)
 
         return {
             "confirmed_item_name": confirmed,

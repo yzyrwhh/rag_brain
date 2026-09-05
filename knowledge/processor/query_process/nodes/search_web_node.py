@@ -15,8 +15,12 @@ class WebSearchNode(BaseNode):
         # 1 参数校验
         rewritten_query = self.validate_param(state)
 
-        # 2 调用mcp工具得到工具返回结果
-        mcp_result = asyncio.run(self.execute_web_search_mcp(rewritten_query))
+        # 2 调用mcp工具得到工具返回结果；失败时降级：返回空结果让知识库检索继续
+        try:
+            mcp_result = asyncio.run(self.execute_web_search_mcp(rewritten_query))
+        except Exception as e:
+            self.logger.warning(f"[WebSearch] 联网搜索失败，已降级为仅知识库回答: {e}")
+            return {"web_search_docs": []}
         if not mcp_result:
             return state
 

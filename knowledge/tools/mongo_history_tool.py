@@ -10,8 +10,11 @@ load_dotenv()
 
 class MongoUtil:
     def __init__(self):
-        self.client = MongoClient(os.getenv("MONGO_URI"))
-        self.db = self.client[os.getenv("MONGO_DB_NAME")]
+        # 兼容两种环境变量名（MONGO_URI 为历史写法，.env 统一为 MONGO_URL）
+        mongo_uri = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+        db_name = os.getenv("MONGO_DB_NAME") or "knowledge"
+        self.client = MongoClient(mongo_uri)
+        self.db = self.client[db_name]
         self.collection = self.db["chat_message"]
 
 def get_mongo_client() -> MongoUtil:
@@ -73,6 +76,35 @@ def clear_chat_message(session_id: str):
     mongo_client = get_mongo_client()
     result = mongo_client.collection.delete_many({"session_id": session_id})
     return str(result.deleted_count)
+
+
+def list_sessions(limit: int = 50) -> List[Dict]:
+    """列出最近会话（按最后活跃时间倒序）。
+
+    Returns:
+        形如 [{"session_id", "last_ts", "last_text", "count"}] 的列表。
+    """
+    mongo_client = get_mongo_client()
+    pipeline = [
+        {"$sort": {"ts": -1}},
+        {"$group": {
+            "_id": "$session_id",
+            "last_ts": {"$first": "$ts"},
+            "last_text": {"$first": "$text"},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"last_ts": -1}},
+        {"$limit": limit},
+    ]
+    return [
+        {
+            "session_id": d.get("_id"),
+            "last_ts": d.get("last_ts"),
+            "last_text": d.get("last_text", ""),
+            "count": d.get("count", 0),
+        }
+        for d in mongo_client.collection.aggregate(pipeline)
+    ]
 
 
 def update_message_item_names(message_ids: List[str], item_names: List[str]):
