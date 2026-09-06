@@ -9,6 +9,7 @@ from knowledge.processor.import_process.config import get_config
 from knowledge.processor.import_process.exceptions import MilvusError
 from knowledge.processor.import_process.state import ImportGraphState
 from knowledge.utils.milvus_utils import get_milvus_client
+from knowledge.tools.milvus_tool import CHUNK_DENSE_METRIC, CHUNK_SPARSE_METRIC, reconcile_collection_indexes
 
 
 class ImportMilvusNode(BaseNode):
@@ -34,6 +35,19 @@ class ImportMilvusNode(BaseNode):
                 self.log_step("step_2", f"创建集合: {collection_name}")
                 self._create_collection(client, collection_name, vector_dim)
 
+
+            # 索引自检（单一事实源见 milvus_tool.py）：与预期 metric 不符自动重建，数据无损
+            reconcile_collection_indexes(
+                client,
+                collection_name,
+                expected=[
+                    {"field": "dense_vector", "index_name": "dense_vector_index",
+                     "index_type": "AUTOINDEX", "metric": CHUNK_DENSE_METRIC},
+                    {"field": "sparse_vector", "index_name": "sparse_inverted_index",
+                     "index_type": "SPARSE_INVERTED_INDEX", "metric": CHUNK_SPARSE_METRIC,
+                     "params": {"inverted_index_algo": "DAAT_MAXSCORE"}},
+                ],
+            )
 
             self.log_step("step_3", "执行插入")
             self._insert_and_backfill_ids(client, collection_name, chunks)
@@ -92,13 +106,13 @@ class ImportMilvusNode(BaseNode):
             field_name="dense_vector",
             index_name="dense_vector_index",
             index_type="AUTOINDEX",
-            metric_type="IP",
+            metric_type=CHUNK_DENSE_METRIC,
         )
         index_params.add_index(
             field_name="sparse_vector",
             index_name="sparse_inverted_index",
             index_type="SPARSE_INVERTED_INDEX",
-            metric_type="IP",
+            metric_type=CHUNK_SPARSE_METRIC,
             params={"inverted_index_algo": "DAAT_MAXSCORE"},
         )
         return index_params

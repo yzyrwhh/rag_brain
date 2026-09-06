@@ -11,7 +11,7 @@ from knowledge.processor.query_process.state import QueryGraphState
 from knowledge.prompt.querry.querry_prompt import ITEM_NAME_EXTRACT_TEMPLATE
 from knowledge.tools.embedding_tool import generate_hybrid_embeddings
 from knowledge.tools.llm_tool import get_llm_client
-from knowledge.tools.milvus_tool import build_hybrid_search_requests, execute_hybrid_search
+from knowledge.tools.milvus_tool import ITEM_NAME_DENSE_METRIC, ITEM_NAME_SPARSE_METRIC, build_hybrid_search_requests, execute_hybrid_search
 from knowledge.utils.milvus_utils import get_milvus_client
 from knowledge.tools.mongo_history_tool import get_recent_message
 from knowledge.tools.mongo_history_tool import save_chat_message
@@ -150,14 +150,14 @@ class ItemNameConfirmNode(BaseNode):
         for i, name in enumerate(item_names):
             try:
                 # 4.1 构建混合检索请求
-                # 注意：item_name 集合的稠密索引为 COSINE（见 item_name_recognition.py），
-                # 必须与集合索引 metric 一致，否则 Milvus 报 metric type not match。
+                # 注意：item_name 集合稠密索引 metric 的单一事实源为 milvus_tool.py 的 ITEM_NAME_DENSE_METRIC，
+                # 检索参数必须与集合索引一致，否则报 metric type not match。
                 reqs = build_hybrid_search_requests(
                     dense_vector=embeddings["dense"][i],
                     sparse_vector=embeddings["sparse"][i],
                     top_k=self.MAX_OPTIONS,
-                    dense_search_params={"metric_type": "COSINE", "params": {"nprobe": 10}},
-                    sparse_search_params={"metric_type": "IP"},
+                    dense_search_params={"metric_type": ITEM_NAME_DENSE_METRIC, "params": {"nprobe": 10}},
+                    sparse_search_params={"metric_type": ITEM_NAME_SPARSE_METRIC},
                 )
 
                 # 4.2 执行混合检索
@@ -167,7 +167,7 @@ class ItemNameConfirmNode(BaseNode):
                     search_requests=reqs,
                     ranker_weights=(0.5, 0.5),
                     top_k=self.MAX_OPTIONS,
-                    normalize_score=True,
+                    normalize_score=False,
                     output_fields=["item_name"],
                 )
 
@@ -187,7 +187,7 @@ class ItemNameConfirmNode(BaseNode):
     def _align_by_score(self, query_results: List[Dict]) -> Dict[str, Any]:
         """根据评分对齐商品名称。
 
-        规则:
+        规则（score 为原始融合分数，余弦量纲；检索用 normalize_score=False，避免归一化后阈值错位）:
             - score > 0.63 且唯一 → 直接确认
             - score > 0.63 且多条 → 优先取与提取名完全匹配的，否则取最高分
             - 0.6 ≤ score < 0.63 → 作为候选选项
@@ -255,8 +255,10 @@ class ItemNameConfirmNode(BaseNode):
             state["answer"] = f"我不确定您指的是哪款产品。您是在询问以下产品吗：{'、'.join(options)}？"
 
         else:
-            # 无匹配：设置无法识别提示
-            state["answer"] = "抱歉，我无法识别您询问的具体产品名称，请提供更准确的产品名称或型号。"
+            # C 增强：无匹配商品名时不再拦截，降级为无商品名全库检索（search_embedding 对空 item_names 全库召回，rerank 把关相关性）
+            state["item_names"] = []
+            state["rewritten_query"] = rewritten_query
+            self.logger.info("商品名无法确认，降级为全库检索（C 增强）")
 
         return state
 

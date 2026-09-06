@@ -11,6 +11,7 @@ from knowledge.utils.bge_client_util import get_bgem3_client
 from knowledge.utils.llm_utils import get_llm_client
 from knowledge.prompt.upload.import_prompt import ITEM_NAME_USER_PROMPT_TEMPLATE, ITEM_NAME_SYSTEM_PROMPT
 from knowledge.utils.milvus_utils import get_milvus_client
+from knowledge.tools.milvus_tool import ITEM_NAME_DENSE_METRIC, ITEM_NAME_SPARSE_METRIC, reconcile_collection_indexes
 
 
 class ItemNameRecognitionNode(BaseNode):
@@ -154,6 +155,19 @@ class ItemNameRecognitionNode(BaseNode):
             if not milvus_client.has_collection(collection_name=collection_name):
                 self._create_item_name_collection(milvus_client, collection_name)
 
+            # 2.3.1 索引自检（单一事实源见 milvus_tool.py）：与预期 metric 不符自动重建，数据无损
+            reconcile_collection_indexes(
+                milvus_client,
+                collection_name,
+                expected=[
+                    {"field": "dense_vector", "index_name": "dense_vector_index",
+                     "index_type": "AUTOINDEX", "metric": ITEM_NAME_DENSE_METRIC},
+                    {"field": "sparse_vector", "index_name": "sparse_inverted_index",
+                     "index_type": "SPARSE_INVERTED_INDEX", "metric": ITEM_NAME_SPARSE_METRIC,
+                     "params": {"inverted_index_algo": "DAAT_MAXSCORE"}},
+                ],
+            )
+
             # 2.4 构建字典结构数据
             data = {
                 "file_title": file_title,  # 文件名字
@@ -185,13 +199,13 @@ class ItemNameRecognitionNode(BaseNode):
             field_name="dense_vector",
             index_name="dense_vector_index",
             index_type="AUTOINDEX",
-            metric_type="COSINE"
+            metric_type=ITEM_NAME_DENSE_METRIC
         )
         index_params.add_index(
             field_name="sparse_vector",
             index_name="sparse_inverted_index",
             index_type="SPARSE_INVERTED_INDEX",
-            metric_type="IP"
+            metric_type=ITEM_NAME_SPARSE_METRIC
         )
 
         client.create_collection(
