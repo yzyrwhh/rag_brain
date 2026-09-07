@@ -288,13 +288,13 @@ class MdImgNode(BaseNode):
                         "content": [
                             {
                                 "type": "text",
-                                "text": f"""任务：为Markdown文档中的图片生成一个简短的中文标题。
+                                "text": f"""任务：提取这张图片中的全部文字内容，按阅读顺序逐行输出。
         背景信息：
         1. 所属文档标题："{doc_title}"
         2. 图片上下文：
            {context_info}
-        请结合图片视觉内容和上述上下文信息，用中文简要总结这张图片的内容，
-        生成一个精准的中文标题（不要包含"图片"二字）。""",
+        要求：忠实提取图中所有可见文字（标题、说明、标注、表格文字等），按阅读顺序输出，不遗漏；禁止添加图中没有的信息，禁止推断、解释或总结；如果图中没有任何文字，输出"图中无文字"。
+        """,
                             },
                             {
                                 "type": "image_url",
@@ -305,14 +305,14 @@ class MdImgNode(BaseNode):
                         ]
                     }
                 ],
-                max_tokens=100,
+                max_tokens=800,
                 temperature=0.3
             )
             summary = response.choices[0].message.content.strip().replace("\n", " ")
             return summary
         except Exception as e:
             self.logger.warning(f"图片摘要生成失败 {image_path}: {e}")
-            return "图片描述"
+            return "图片"
 
     def _upload_images_and_replace_links(
             self,
@@ -361,8 +361,14 @@ class MdImgNode(BaseNode):
                 r"!\[(.*?)\]\((.*?" + re.escape(image_filename) + r".*?)\)",
                 re.IGNORECASE
             )
+            # alt 保留提取文字前 20 字（简短），正文插入完整提取文字段落
+            summary_clean = summary_text.strip().replace("\n", " ")
+            alt_text = summary_clean[:20] if summary_clean and summary_clean != "图中无文字" else "图片"
+            image_block = f"![{alt_text}]({remote_url})"
+            if summary_clean and summary_clean != "图中无文字":
+                image_block += f"\n\n【图片内容】{summary_clean}\n"
             new_md_content = replace_pattern.sub(
-                f"![{summary_text}]({remote_url})",
+                lambda m: image_block,
                 new_md_content
             )
 
